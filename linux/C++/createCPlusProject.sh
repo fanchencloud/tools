@@ -31,12 +31,28 @@ set(CMAKE_BINARY_DIR \${CMAKE_SOURCE_DIR}/build)
 # 创建构建目录
 file(MAKE_DIRECTORY \${CMAKE_BINARY_DIR})
 
-
 # 设置C++标准
 set(CMAKE_CXX_STANDARD 11)
 
+# 设置src目录的路径
+set(SRC_DIR \${CMAKE_SOURCE_DIR}/src)
+
+# 递归查找src目录下的所有子目录
+file(GLOB_RECURSE SUBDIRECTORIES LIST_DIRECTORIES true "\${SRC_DIR}/*")
+
+# 遍历所有子目录，获取其中的文件路径
+foreach(SUBDIRECTORY IN LISTS SUBDIRECTORIES)
+    file(GLOB_RECURSE FILES_IN_SUBDIR "\${SUBDIRECTORY}/*")
+    list(APPEND ALL_FILES \${FILES_IN_SUBDIR})
+endforeach()
+
+# 打印所有文件的路径（可选）
+foreach(FILE_PATH IN LISTS ALL_FILES)
+    message(STATUS "Found file: \${FILE_PATH}")
+endforeach()
+
 # 添加可执行文件
-add_executable($project_name \${CMAKE_SOURCE_DIR}/src/main.cpp)
+add_executable($project_name \${CMAKE_SOURCE_DIR}/src/main.cpp \${ALL_FILES})
 
 # 如果有头文件，将它们添加到包含路径
 target_include_directories($project_name PRIVATE include)
