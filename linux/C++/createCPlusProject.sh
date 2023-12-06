@@ -66,6 +66,27 @@ file(MAKE_DIRECTORY \${EXECUTABLE_OUTPUT_PATH})
 add_custom_command(TARGET $project_name POST_BUILD
     COMMAND \${CMAKE_COMMAND} -E copy $<TARGET_FILE:$project_name> \${EXECUTABLE_OUTPUT_PATH}
 )
+# 编译器选项
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror")
+
+# 添加删除Cmake生成的临时文件
+add_custom_target(clean_all
+    # 删除build目录
+    COMMAND \${CMAKE_COMMAND} -E remove_directory \${CMAKE_BINARY_DIR}
+    # 删除CMakeFiles目录
+    COMMAND \${CMAKE_COMMAND} -E remove_directory CMakeFiles
+    # 删除生成Makefile
+    COMMAND \${CMAKE_COMMAND} -E remove Makefile
+    # 删除cmakecache.txt
+    COMMAND \${CMAKE_COMMAND} -E remove cmakecache.txt CMakeCache.txt
+    # 删除cmake_install.cmake
+    COMMAND \${CMAKE_COMMAND} -E remove cmake_install.cmake
+    # 删除install_manifest.txt
+    COMMAND \${CMAKE_COMMAND} -E remove install_manifest.txt
+)
+
+# 将clean_all添加到默认目标
+add_dependencies($project_name clean_all)
 EOL
 
 # 创建示例的 main.cpp 文件
