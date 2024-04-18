@@ -85,8 +85,12 @@ add_custom_target(clean_all
     COMMAND \${CMAKE_COMMAND} -E remove install_manifest.txt
 )
 
-# 将clean_all添加到默认目标
-add_dependencies($project_name clean_all)
+# 添加自定义目标来运行可执行文件
+add_custom_target(run
+    COMMAND $project_name
+    DEPENDS $project_name
+    WORKING_DIRECTORY ${CMAKE_PROJECT_DIR}
+)
 EOL
 
 # 创建示例的 main.cpp 文件
