@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Maven 依赖安装命令生成器</title>
+    <style>
+      :root {
+        --bg-color: #ffffff;
+        --text-color: #000000;
+        --input-bg: #ffffff;
+        --result-bg: #f5f5f5;
+        --tab-bg: #f0f0f0;
+      }
+
+      [data-theme="dark"] {
+        --bg-color: #1a1a1a;
+        --text-color: #ffffff;
+        --input-bg: #2d2d2d;
+        --result-bg: #2d2d2d;
+        --tab-bg: #2d2d2d;
+      }
+
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        transition: all 0.3s ease;
+      }
+
+      .form-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+      }
+      input {
+        width: 100%;
+        padding: 8px;
+        box-sizing: border-box;
+        background-color: var(--input-bg);
+        color: var(--text-color);
+        border: 1px solid #666;
+      }
+      button {
+        background-color: #4caf50;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      #result {
+        margin-top: 20px;
+        padding: 10px;
+        background-color: var(--result-bg);
+        border-radius: 4px;
+      }
+      .input-methods {
+        margin-bottom: 20px;
+      }
+      .tab {
+        padding: 10px 20px;
+        margin-right: 5px;
+        background-color: var(--tab-bg);
+        color: var(--text-color);
+        border: none;
+        cursor: pointer;
+      }
+      .tab.active {
+        background-color: #4caf50;
+        color: white;
+      }
+      textarea {
+        width: 100%;
+        height: 150px;
+        margin-bottom: 15px;
+        padding: 8px;
+        box-sizing: border-box;
+        background-color: var(--input-bg);
+        color: var(--text-color);
+        border: 1px solid #666;
+      }
+      .hidden {
+        display: none;
+      }
+      .theme-switch {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 8px 16px;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .required {
+        color: red;
+      }
+      select {
+        width: 100%;
+        padding: 8px;
+        box-sizing: border-box;
+        background-color: var(--input-bg);
+        color: var(--text-color);
+        border: 1px solid #666;
+      }
+      input[type="checkbox"] {
+        width: auto;
+        margin-right: 5px;
+      }
+      .file-input-container {
+        margin-bottom: 15px;
+      }
+      .file-input-group {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .file-input-group input[type="text"] {
+        flex: 1;
+        margin-right: 10px;
+      }
+      .file-input-group button {
+        white-space: nowrap;
+        width: 100px;
+      }
+      .command-container {
+        position: relative;
+        margin-top: 10px;
+      }
+
+      .copy-button {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        padding: 5px 10px;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      .copy-button:hover {
+        background-color: #45a049;
+      }
+
+      pre code {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+    </style>
+  </head>
+  <body>
+    <button class="theme-switch" onclick="toggleTheme()">切换主题</button>
+    <h1>Maven 依赖安装命令生成器</h1>
+
+    <div class="input-methods">
+      <button class="tab active" onclick="switchTab('manual')">手动输入</button>
+      <button class="tab" onclick="switchTab('xml')">XML解析</button>
+      <button class="tab" onclick="switchTab('deploy')">上传Jar包</button>
+    </div>
+
+    <div id="manualInput">
+      <div class="form-group">
+        <label for="groupId">Group ID: <span class="required">*</span></label>
+        <input type="text" id="groupId" placeholder="例如: com.example" />
+      </div>
+      <div class="form-group">
+        <label for="artifactId"
+          >Artifact ID: <span class="required">*</span></label
+        >
+        <input type="text" id="artifactId" placeholder="例如: my-library" />
+      </div>
+      <div class="form-group">
+        <label for="version">Version: <span class="required">*</span></label>
+        <input type="text" id="version" placeholder="例如: 1.0.0" />
+      </div>
+      <div class="form-group">
+        <label for="classifier">Classifier:</label>
+        <input type="text" id="classifier" placeholder="可选" />
+      </div>
+      <div class="form-group">
+        <label for="packaging"
+          >Packaging: <span class="required">*</span></label
+        >
+        <select id="packaging">
+          <option value="">请选择</option>
+          <option value="jar">jar</option>
+          <option value="war">war</option>
+          <option value="pom">pom</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="file">File: <span class="required">*</span></label>
+        <div class="file-input-container">
+          <div class="file-input-group">
+            <input
+              type="text"
+              id="folderPath"
+              placeholder="输入本地文件夹路径"
+            />
+          </div>
+          <div class="file-input-group">
+            <input
+              type="text"
+              id="fileName"
+              placeholder="选择文件获取文件名"
+              readonly
+            />
+            <input
+              type="file"
+              id="fileInput"
+              style="display: none"
+              onchange="updateFileName(this)"
+            />
+            <button onclick="document.getElementById('fileInput').click()">
+              选择文件
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label> <input type="checkbox" id="generatePom" /> 生成POM文件 </label>
+      </div>
+      <button onclick="generateCommand()">生成命令</button>
+    </div>
+
+    <div id="xmlInput" class="hidden">
+      <div class="form-group">
+        <label for="xmlContent">粘贴Maven依赖XML:</label>
+        <textarea
+          id="xmlContent"
+          placeholder="粘贴类似以下格式的Maven依赖:
+<dependency>
+    <groupId>org.example</groupId>
+    <artifactId>library</artifactId>
+    <version>1.0.0</version>
+</dependency>"
+        ></textarea>
+      </div>
+      <div class="form-group">
+        <label for="xmlFile">File: <span class="required">*</span></label>
+        <div class="file-input-container">
+          <div class="file-input-group">
+            <input
+              type="text"
+              id="xmlFolderPath"
+              placeholder="输入本地文件夹路径"
+            />
+          </div>
+          <div class="file-input-group">
+            <input
+              type="text"
+              id="xmlFileName"
+              placeholder="选择文件获取文件名"
+              readonly
+            />
+            <input
+              type="file"
+              id="xmlFileInput"
+              style="display: none"
+              onchange="updateXmlFileName(this)"
+            />
+            <button onclick="document.getElementById('xmlFileInput').click()">
+              选择文件
+            </button>
+          </div>
+        </div>
+      </div>
+      <button onclick="parseXmlAndGenerate()">生成命令</button>
+    </div>
+
+    <div id="deployInput" class="hidden">
+      <div class="form-group">
+        <label for="deployContent">粘贴Maven依赖XML:</label>
+        <textarea
+          id="deployContent"
+          placeholder="粘贴类似以下格式的Maven依赖:
+<dependency>
+    <groupId>org.example</groupId>
+    <artifactId>library</artifactId>
+    <version>1.0.0</version>
+</dependency>"
+        ></textarea>
+      </div>
+      <div class="form-group">
+        <label for="deployFile">File: <span class="required">*</span></label>
+        <div class="file-input-container">
+          <div class="file-input-group">
+            <input
+              type="text"
+              id="deployFolderPath"
+              placeholder="输入本地文件夹路径"
+            />
+          </div>
+          <div class="file-input-group">
+            <input
+              type="text"
+              id="deployFileName"
+              placeholder="选择文件获取文件名"
+              readonly
+            />
+            <input
+              type="file"
+              id="deployFileInput"
+              style="display: none"
+              onchange="updateDeployFileName(this)"
+            />
+            <button
+              onclick="document.getElementById('deployFileInput').click()"
+            >
+              选择文件
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="repositoryId"
+          >Repository ID: <span class="required">*</span></label
+        >
+        <input type="text" id="repositoryId" placeholder="例如: nexus-repo" />
+      </div>
+      <div class="form-group">
+        <label for="repositoryUrl"
+          >Repository URL: <span class="required">*</span></label
+        >
+        <input
+          type="text"
+          id="repositoryUrl"
+          placeholder="例如: http://your-nexus-url/repository/your-repo/"
+        />
+      </div>
+      <button onclick="generateDeployCommand()">生成命令</button>
+    </div>
+
+    <div id="result"></div>
+
+    <script>
+      function setTheme(theme) {
+        document.documentElement.setAttribute("data-theme", theme);
+        localStorage.setItem("theme", theme);
+      }
+
+      function toggleTheme() {
+        const currentTheme = localStorage.getItem("theme") || "light";
+        const newTheme = currentTheme === "light" ? "dark" : "light";
+        setTheme(newTheme);
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        const savedTheme = localStorage.getItem("theme") || "light";
+        setTheme(savedTheme);
+      });
+
+      function copyToClipboard(command) {
+        console.debug("copyToClipboard: ", command);
+        // 保留原始格式，去除多余空格并保持换行
+        const formattedCommand = command
+          .replace(/\\\n\s*/g, "\\\n") // 保持换行符，移除多余空格
+          .replace(/\s+\\/g, " \\") // 保证行尾 \ 后有空格
+          .replace(/^\s+/gm, "") // 去掉行首空格
+          .trim(); // 去掉整体首尾空格
+
+        
+
+        if (navigator.clipboard) {
+          navigator.clipboard
+            .writeText(formattedCommand)
+            .then(() => {
+              const copyBtn = document.querySelector(".copy-button");
+              if (copyBtn) {
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = "已复制！";
+                setTimeout(() => {
+                  copyBtn.textContent = originalText;
+                }, 2000);
+              }
+            })
+            .catch((err) => {
+              console.error("Clipboard API 复制失败:", err);
+              fallbackCopyToClipboard(formattedCommand);
+            });
+        } else {
+          fallbackCopyToClipboard(formattedCommand);
+        }
+      }
+
+      function fallbackCopyToClipboard(command) {
+        console.debug("fallbackCopyToClipboard", command);
+        const textArea = document.createElement("textarea");
+        textArea.value = command;
+        textArea.style.position = "fixed";
+        textArea.style.opacity = "0";
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+          document.execCommand("copy");
+          const copyBtn = document.querySelector(".copy-button");
+          if (copyBtn) {
+            const originalText = copyBtn.textContent;
+            copyBtn.textContent = "已复制！";
+            setTimeout(() => {
+              copyBtn.textContent = originalText;
+            }, 2000);
+          }
+        } catch (err) {
+          console.error("document.execCommand 复制失败:", err);
+          alert("复制失败，请手动复制");
+        }
+        document.body.removeChild(textArea);
+      }
+
+      function updateResultDisplay(command) {
+        document.getElementById("result").innerHTML = `
+            <h3>生成的命令：</h3>
+            <div class="command-container">
+                <button class="copy-button" onclick="copyToClipboard(\`${command}\`)">复制命令</button>
+                <pre style="white-space: pre-wrap;"><code>${command}</code></pre>
+            </div>
+        `;
+      }
+
+      function generateCommand() {
+        const groupId = document.getElementById("groupId").value;
+        const artifactId = document.getElementById("artifactId").value;
+        const version = document.getElementById("version").value;
+        const classifier = document.getElementById("classifier").value;
+        const packaging = document.getElementById("packaging").value;
+        const file = document.getElementById("file").value;
+        const generatePom = document.getElementById("generatePom").checked;
+
+        if (!groupId || !artifactId || !version || !packaging || !file) {
+          alert("请填写所有必填段！");
+          return;
+        }
+
+        let command = `mvn install:install-file \\
+    -DgroupId=${groupId} \\
+    -DartifactId=${artifactId} \\
+    -Dversion=${version} \\
+    -Dpackaging=${packaging}`;
+
+        if (classifier) {
+          command += ` \\
+    -Dclassifier=${classifier}`;
+        }
+
+        if (generatePom) {
+          command += ` \\
+    -DgeneratePom=true`;
+        }
+
+        command += ` \\
+    -Dfile=${file}`;
+
+        updateResultDisplay(command);
+      }
+
+      function switchTab(tab) {
+        document
+          .querySelectorAll(".tab")
+          .forEach((t) => t.classList.remove("active"));
+        document
+          .querySelector(`[onclick="switchTab('${tab}')"]`)
+          .classList.add("active");
+
+        document.getElementById("manualInput").classList.add("hidden");
+        document.getElementById("xmlInput").classList.add("hidden");
+        document.getElementById("deployInput").classList.add("hidden");
+
+        document.getElementById(`${tab}Input`).classList.remove("hidden");
+      }
+
+      function parseXmlAndGenerate() {
+        const xmlContent = document.getElementById("xmlContent").value;
+        const folderPath = document
+          .getElementById("xmlFolderPath")
+          .value.trim();
+        const fileName = document.getElementById("xmlFileName").value.trim();
+
+        if (!xmlContent || !folderPath || !fileName) {
+          alert("请填写XML内容和完整的文件路径信息！");
+          return;
+        }
+
+        const groupIdMatch = xmlContent.match(/<groupId>(.*?)<\/groupId>/);
+        const artifactIdMatch = xmlContent.match(
+          /<artifactId>(.*?)<\/artifactId>/
+        );
+        const versionMatch = xmlContent.match(/<version>(.*?)<\/version>/);
+
+        if (!groupIdMatch || !artifactIdMatch || !versionMatch) {
+          alert("无法解析XML内容，请确保格式正确！");
+          return;
+        }
+
+        const groupId = groupIdMatch[1];
+        const artifactId = artifactIdMatch[1];
+        const version = versionMatch[1];
+        const packaging = "jar";
+
+        // 移除路径末尾的所有斜杠
+        const normalizedPath = folderPath.replace(/[\/\\]+$/, "");
+        // 移除文件名开头的所有斜杠
+        const normalizedFileName = fileName.replace(/^[\/\\]+/, "");
+        const fullPath = `${normalizedPath}/${normalizedFileName}`;
+
+        const command = `mvn install:install-file \\
+    -DgroupId=${groupId} \\
+    -DartifactId=${artifactId} \\
+    -Dversion=${version} \\
+    -Dpackaging=${packaging} \\
+    -Dfile=${fullPath}`;
+
+        updateResultDisplay(command);
+      }
+
+      function updateFileName(input) {
+        if (input.files && input.files[0]) {
+          const fileName = input.files[0].name;
+          document.getElementById("fileName").value = fileName;
+          updateFilePath();
+        }
+      }
+
+      function updateFilePath() {
+        const folderPath = document.getElementById("folderPath").value.trim();
+        const fileName = document.getElementById("fileName").value.trim();
+
+        if (folderPath && fileName) {
+          // 移除路径末尾的所有斜杠
+          const normalizedPath = folderPath.replace(/[\/\\]+$/, "");
+          // 移除文件名开头的所有斜杠
+          const normalizedFileName = fileName.replace(/^[\/\\]+/, "");
+          const fullPath = `${normalizedPath}/${normalizedFileName}`;
+          document.getElementById("file").value = fullPath;
+        }
+      }
+
+      // 添加文件夹路径输入监听
+      document
+        .getElementById("folderPath")
+        .addEventListener("input", updateFilePath);
+
+      // 隐藏的完整路径输入框
+      const hiddenFileInput = document.createElement("input");
+      hiddenFileInput.type = "hidden";
+      hiddenFileInput.id = "file";
+      document
+        .querySelector(".file-input-container")
+        .appendChild(hiddenFileInput);
+
+      function updateXmlFileName(input) {
+        if (input.files && input.files[0]) {
+          const fileName = input.files[0].name;
+          document.getElementById("xmlFileName").value = fileName;
+          updateXmlFilePath();
+        }
+      }
+
+      function updateXmlFilePath() {
+        const folderPath = document
+          .getElementById("xmlFolderPath")
+          .value.trim();
+        const fileName = document.getElementById("xmlFileName").value.trim();
+
+        if (folderPath && fileName) {
+          // 移除路径末尾的所有斜杠
+          const normalizedPath = folderPath.replace(/[\/\\]+$/, "");
+          // 移除文件名开头的所有斜杠
+          const normalizedFileName = fileName.replace(/^[\/\\]+/, "");
+          const fullPath = `${normalizedPath}/${normalizedFileName}`;
+          document.getElementById("xmlFile").value = fullPath;
+        }
+      }
+
+      // 添加文件夹路径输入监听
+      document
+        .getElementById("xmlFolderPath")
+        .addEventListener("input", updateXmlFilePath);
+
+      // 添加隐藏的XML文件路径输入框
+      const hiddenXmlFileInput = document.createElement("input");
+      hiddenXmlFileInput.type = "hidden";
+      hiddenXmlFileInput.id = "xmlFile";
+      document
+        .querySelector("#xmlInput .file-input-container")
+        .appendChild(hiddenXmlFileInput);
+
+      function updateDeployFileName(input) {
+        if (input.files && input.files[0]) {
+          const fileName = input.files[0].name;
+          document.getElementById("deployFileName").value = fileName;
+          updateDeployFilePath();
+        }
+      }
+
+      function updateDeployFilePath() {
+        const folderPath = document
+          .getElementById("deployFolderPath")
+          .value.trim();
+        const fileName = document.getElementById("deployFileName").value.trim();
+
+        if (folderPath && fileName) {
+          // 移除路径末尾的所有斜杠
+          const normalizedPath = folderPath.replace(/[\/\\]+$/, "");
+          // 移除文件名开头的所有斜杠
+          const normalizedFileName = fileName.replace(/^[\/\\]+/, "");
+          const fullPath = `${normalizedPath}/${normalizedFileName}`;
+          document.getElementById("deployFile").value = fullPath;
+        }
+      }
+
+      function generateDeployCommand() {
+        const xmlContent = document.getElementById("deployContent").value;
+        const folderPath = document
+          .getElementById("deployFolderPath")
+          .value.trim();
+        const fileName = document.getElementById("deployFileName").value.trim();
+        const repositoryId = document
+          .getElementById("repositoryId")
+          .value.trim();
+        const repositoryUrl = document
+          .getElementById("repositoryUrl")
+          .value.trim();
+
+        if (
+          !xmlContent ||
+          !folderPath ||
+          !fileName ||
+          !repositoryId ||
+          !repositoryUrl
+        ) {
+          alert("请填写所有必填字段！");
+          return;
+        }
+
+        const groupIdMatch = xmlContent.match(/<groupId>(.*?)<\/groupId>/);
+        const artifactIdMatch = xmlContent.match(
+          /<artifactId>(.*?)<\/artifactId>/
+        );
+        const versionMatch = xmlContent.match(/<version>(.*?)<\/version>/);
+
+        if (!groupIdMatch || !artifactIdMatch || !versionMatch) {
+          alert("无法解析XML内容，请确保格式正确！");
+          return;
+        }
+
+        const groupId = groupIdMatch[1];
+        const artifactId = artifactIdMatch[1];
+        const version = versionMatch[1];
+
+        // 移除路径末尾的所有斜杠
+        const normalizedPath = folderPath.replace(/[\/\\]+$/, "");
+        // 移除文件名开头的所有斜杠
+        const normalizedFileName = fileName.replace(/^[\/\\]+/, "");
+        const fullPath = `${normalizedPath}/${normalizedFileName}`;
+
+        const command = `mvn deploy:deploy-file \\
+    -DgroupId=${groupId} \\
+    -DartifactId=${artifactId} \\
+    -Dversion=${version} \\
+    -Dpackaging=jar \\
+    -Dfile=${fullPath} \\
+    -DrepositoryId=${repositoryId} \\
+    -Durl=${repositoryUrl}`;
+
+        updateResultDisplay(command);
+      }
+
+      // 添加文件夹路径输入监听
+      document
+        .getElementById("deployFolderPath")
+        .addEventListener("input", updateDeployFilePath);
+
+      // 添加隐藏的deploy文件路径输入框
+      const hiddenDeployFileInput = document.createElement("input");
+      hiddenDeployFileInput.type = "hidden";
+      hiddenDeployFileInput.id = "deployFile";
+      document
+        .querySelector("#deployInput .file-input-container")
+        .appendChild(hiddenDeployFileInput);
+    </script>
+  </body>
+</html>
